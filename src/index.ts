@@ -12,15 +12,18 @@ app.get('/health', (_req: Request, res: Response) => {
 
 app.post('/best-move', (req: Request, res: Response) => {
   try {
-    const { fen, depth = 3, collectTree = false, maxNodes } = req.body ?? {}
+    const {
+      fen,
+      depth = 3,
+      collectTree = false,
+      maxNodes = 200,
+    } = req.body ?? {}
     if (typeof fen !== 'string' || !fen.trim()) {
       return res.status(400).json({ error: 'Invalid or missing fen' })
     }
-    const result = searchBestMove(fen, { depth, collectTree, maxNodes })
+    const result = searchBestMove(fen)
     return res.json({
-      bestMoveSAN: result.bestMove?.san ?? null,
-      score: result.score,
-      pv: result.pv,
+      bestMoveSAN: result,
     })
   } catch (err: any) {
     return res.status(500).json({ error: err?.message ?? 'Server error' })

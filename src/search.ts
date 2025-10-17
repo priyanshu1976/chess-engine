@@ -1,126 +1,250 @@
 import { Chess, Move } from 'chess.js'
-import { evaluatePosition } from './evaluation'
-import { orderedMoves } from './moveOrdering'
-import { sanitizeFen } from './helpers'
-import { SearchNode, SearchOptions, SearchResult, TTEntry } from './types'
+import { PieceType } from './types'
 
-export function searchBestMove(
-  fenRaw: string,
-  opts: SearchOptions
-): SearchResult {
-  const fen = sanitizeFen(fenRaw)
-  const chess = new Chess(fen)
+interface IQueue<T> {
+  enqueue(item: T): void
+  dequeue(): T | undefined
+  size(): number
+}
 
-  const tt = new Map<string, TTEntry>()
-  let nodes = 0
-  const nodeCap = opts.maxNodes ?? Infinity
+class Queue<T> implements IQueue<T> {
+  private storage: T[] = []
 
-  const root: SearchNode | undefined = opts.collectTree ? { fen } : undefined
+  constructor(private capacity: number = Infinity) {}
 
-  function minimax(
-    depth: number,
-    alpha: number,
-    beta: number,
-    parent?: SearchNode
-  ): { score: number; pv: string[]; best?: Move } {
-    if (
-      opts.collectTree &&
-      parent &&
-      (parent.children?.length ?? 0) > nodeCap - 1
-    ) {
-      return { score: evaluatePosition(chess), pv: [] }
+  enqueue(item: T): void {
+    if (this.size() === this.capacity) {
+      throw Error('Queue has reached max capacity, you cannot add more items')
     }
+    this.storage.push(item)
+  }
+  dequeue(): T | undefined {
+    return this.storage.shift()
+  }
+  size(): number {
+    return this.storage.length
+  }
+}
 
-    const key = sanitizeFen(chess.fen())
-    const ttHit = tt.get(key)
-    if (ttHit && ttHit.depth >= depth) {
-      if (ttHit.flag === 'EXACT')
-        return { score: ttHit.score, pv: ttHit.bestSAN ? [ttHit.bestSAN] : [] }
-      if (ttHit.flag === 'LOWER') alpha = Math.max(alpha, ttHit.score)
-      else if (ttHit.flag === 'UPPER') beta = Math.min(beta, ttHit.score)
-      if (alpha >= beta)
-        return { score: ttHit.score, pv: ttHit.bestSAN ? [ttHit.bestSAN] : [] }
-    }
+const PIECE_VAL: Record<PieceType, number> = {
+  p: 1,
+  n: 3,
+  b: 3,
+  r: 5,
+  q: 9,
+  k: 50000,
+}
 
-    if (depth === 0 || chess.isGameOver()) {
-      const evalScore = evaluatePosition(chess)
-      if (parent) parent.score = evalScore
-      return { score: evalScore, pv: [] }
-    }
+const PST = {
+  p: [
+    [0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 1, 1, 0, 0, 0],
+    [0, 1, 2, 2, 2, 2, 1, 0],
+    [1, 2, 3, 3, 3, 3, 2, 1],
+    [1, 2, 3, 4, 4, 3, 2, 1],
+    [2, 3, 4, 5, 5, 4, 3, 2],
+    [3, 4, 5, 6, 6, 5, 4, 3],
+    [0, 0, 0, 0, 0, 0, 0, 0],
+  ],
+  n: [
+    [0, 1, 2, 2, 2, 2, 1, 0],
+    [1, 3, 4, 4, 4, 4, 3, 1],
+    [2, 4, 6, 6, 6, 6, 4, 2],
+    [2, 4, 6, 7, 7, 6, 4, 2],
+    [2, 4, 6, 7, 7, 6, 4, 2],
+    [2, 4, 6, 6, 6, 6, 4, 2],
+    [1, 3, 4, 4, 4, 4, 3, 1],
+    [0, 1, 2, 2, 2, 2, 1, 0],
+  ],
+  b: [
+    [0, 1, 1, 2, 2, 1, 1, 0],
+    [1, 2, 3, 3, 3, 3, 2, 1],
+    [1, 3, 4, 4, 4, 4, 3, 1],
+    [2, 3, 4, 5, 5, 4, 3, 2],
+    [2, 3, 4, 5, 5, 4, 3, 2],
+    [1, 3, 4, 4, 4, 4, 3, 1],
+    [1, 2, 3, 3, 3, 3, 2, 1],
+    [0, 1, 1, 2, 2, 1, 1, 0],
+  ],
+  r: [
+    [0, 0, 1, 2, 2, 1, 0, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 1, 2, 3, 3, 2, 1, 0],
+    [0, 0, 1, 2, 2, 1, 0, 0],
+  ],
+  q: [
+    [0, 0, 1, 1, 1, 1, 0, 0],
+    [0, 1, 2, 2, 2, 2, 1, 0],
+    [1, 2, 3, 3, 3, 3, 2, 1],
+    [1, 2, 3, 4, 4, 3, 2, 1],
+    [1, 2, 3, 4, 4, 3, 2, 1],
+    [1, 2, 3, 3, 3, 3, 2, 1],
+    [0, 1, 2, 2, 2, 2, 1, 0],
+    [0, 0, 1, 1, 1, 1, 0, 0],
+  ],
+  k: [
+    [2, 2, 1, 0, 0, 1, 2, 2],
+    [2, 2, 1, 0, 0, 1, 2, 2],
+    [1, 1, 0, 0, 0, 0, 1, 1],
+    [0, 0, 0, -1, -1, 0, 0, 0],
+    [0, 0, 0, -1, -1, 0, 0, 0],
+    [1, 1, 0, 0, 0, 0, 1, 1],
+    [2, 2, 1, 0, 0, 1, 2, 2],
+    [2, 2, 1, 0, 0, 1, 2, 2],
+  ],
+} as const
 
-    nodes++
-    const side = chess.turn()
-    let bestMove: Move | undefined
-    let bestPV: string[] = []
+class ChessNode {
+  public fen: string
+  public value: number
+  public children: ChessNode[]
 
-    const moves = orderedMoves(chess)
-    if (opts.collectTree && parent) parent.children = []
+  constructor(fen: string, value: number) {
+    this.fen = fen
+    this.value = value
+    this.children = []
+  }
 
-    if (side === 'b') {
-      let value = -Infinity
-      const originalAlpha = alpha
-      const originalBeta = beta
-      for (const m of moves) {
-        chess.move(m)
-        const childNode: SearchNode | undefined =
-          opts.collectTree && parent
-            ? { fen: sanitizeFen(chess.fen()), moveSAN: m.san }
-            : undefined
-        if (childNode && parent) parent.children!.push(childNode)
-        const r = minimax(depth - 1, alpha, beta, childNode)
-        chess.undo()
-        if (r.score > value) {
-          value = r.score
-          bestMove = m
-          bestPV = [m.san, ...r.pv]
-        }
-        alpha = Math.max(alpha, value)
-        if (alpha >= beta) break
+  addChild(child: ChessNode) {
+    this.children.push(child)
+  }
+}
+
+// Minimax Algorithm applied on the root node created
+function minimax(
+  node: ChessNode,
+  depth: number,
+  maximizingPlayer: boolean
+): number {
+  if (depth === 0 || node.children.length === 0) {
+    return node.value
+  }
+
+  if (maximizingPlayer) {
+    let maxEval = -Infinity
+    for (const child of node.children) {
+      const evalValue = minimax(child, depth - 1, false)
+      if (evalValue > maxEval) {
+        maxEval = evalValue
       }
-      const flag: TTEntry['flag'] =
-        value <= originalAlpha
-          ? 'UPPER'
-          : value >= originalBeta
-          ? 'LOWER'
-          : 'EXACT'
-      tt.set(key, { depth, score: value, flag, bestSAN: bestMove?.san })
-      if (parent) parent.score = value
-      return { score: value, pv: bestPV, best: bestMove }
-    } else {
-      let value = Infinity
-      const originalAlpha = alpha
-      const originalBeta = beta
-      for (const m of moves) {
-        chess.move(m)
-        const childNode: SearchNode | undefined =
-          opts.collectTree && parent
-            ? { fen: sanitizeFen(chess.fen()), moveSAN: m.san }
-            : undefined
-        if (childNode && parent) parent.children!.push(childNode)
-        const r = minimax(depth - 1, alpha, beta, childNode)
-        chess.undo()
-        if (r.score < value) {
-          value = r.score
-          bestMove = m
-          bestPV = [m.san, ...r.pv]
-        }
-        beta = Math.min(beta, value)
-        if (alpha >= beta) break
+    }
+    return maxEval
+  } else {
+    let minEval = Infinity
+    for (const child of node.children) {
+      const evalValue = minimax(child, depth - 1, true)
+      if (evalValue < minEval) {
+        minEval = evalValue
       }
-      const flag: TTEntry['flag'] =
-        value <= originalAlpha
-          ? 'UPPER'
-          : value >= originalBeta
-          ? 'LOWER'
-          : 'EXACT'
-      tt.set(key, { depth, score: value, flag, bestSAN: bestMove?.san })
-      if (parent) parent.score = value
-      return { score: value, pv: bestPV, best: bestMove }
+    }
+    return minEval
+  }
+}
+
+export function searchBestMove(fenRaw: string) {
+  const chess = new Chess(fenRaw)
+  const legalMoves = chess.moves()
+  const root = new ChessNode(fenRaw, evaluatePosition(fenRaw))
+  const queue = new Queue<ChessNode>()
+  queue.enqueue(root)
+
+  for (let i = 0; i < 4; i++) {
+    const node = queue.dequeue()
+    // console.log('level ', i + 1) // Comment out for brevity
+    if (!node) continue
+    const chessInstance = new Chess(node.fen)
+    const legalMoves = chessInstance.moves({ verbose: true })
+    for (const move of legalMoves) {
+      chessInstance.move(move)
+      const childNode = new ChessNode(
+        chessInstance.fen(),
+        evaluatePosition(chessInstance.fen())
+      )
+      // console.log(evaluatePosition(chessInstance.fen())) // Comment out for brevity
+      node.addChild(childNode)
+      queue.enqueue(childNode)
+      chessInstance.undo()
     }
   }
 
-  const { score, pv, best } = minimax(opts.depth, -Infinity, Infinity, root)
-  return { score, bestMove: best, pv, rootTree: root }
+  // ! here the root is prepared
+
+  // Now, let's apply minimax to the root's children to choose the best move
+  // Assume root turn is maximizing if it is white
+  const chessForTurn = new Chess(root.fen)
+  const maximizingPlayer = chessForTurn.turn() === 'w'
+  let bestVal = maximizingPlayer ? -Infinity : Infinity
+  let bestMoveIndex = -1
+
+  for (let i = 0; i < root.children.length; i++) {
+    const child = root.children[i]
+    const val = minimax(child, 7, !maximizingPlayer)
+    // console.log(`Move #${i}: eval = ${val}`)
+    if (maximizingPlayer) {
+      if (val > bestVal) {
+        bestVal = val
+        bestMoveIndex = i
+      }
+    } else {
+      if (val < bestVal) {
+        bestVal = val
+        bestMoveIndex = i
+      }
+    }
+  }
+
+  if (bestMoveIndex !== -1 && root.children[bestMoveIndex]) {
+    console.log('Best move FEN:', root.children[bestMoveIndex].fen)
+    return root.children[bestMoveIndex].fen
+    console.log('Best move value:', bestVal)
+  } else {
+    console.log('No best move found.')
+    return 0
+  }
+
+  // * first lets convert the fen string in to 64 char arr
 }
 
-export const searchBestMoveForBlack = searchBestMove
+searchBestMove('4k1rr/8/8/8/8/8/7R/R3K3 w Qk - 2 2')
+
+export function evaluatePosition(fen: string): number {
+  // * check if its black turn
+  const chess = new Chess(fen)
+  if (chess.isCheckmate()) {
+    return chess.turn() === 'b' ? -1e6 : 1e6
+  }
+  // * check if winning conditions
+  if (
+    chess.isDraw() ||
+    chess.isStalemate() ||
+    chess.isThreefoldRepetition() ||
+    chess.isInsufficientMaterial()
+  ) {
+    return 0
+  }
+
+  const mirror = (i: number) => 7 - i
+
+  let score = 0
+  const board = chess.board()
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const square = board[rank][file]
+      if (!square) continue
+      const type = square.type as PieceType
+      const baseValue = PIECE_VAL[type]
+      const pstBonus =
+        square.color === 'b'
+          ? PST[type][rank][file]
+          : PST[type][mirror(rank)][mirror(file)]
+      const pieceValue = baseValue + 1 * pstBonus
+      score += square.color === 'b' ? pieceValue : -pieceValue
+    }
+  }
+
+  return score
+}
