@@ -1,10 +1,16 @@
 import express, { Request, Response } from 'express'
-import { searchBestMove } from './search'
+import { searchBestMove } from './search2'
+import cors from 'cors'
 
 export { searchBestMove }
 
 const app = express()
 app.use(express.json())
+app.use(
+  cors({
+    origin: '*',
+  })
+)
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ ok: true })
@@ -21,6 +27,7 @@ app.post('/best-move', (req: Request, res: Response) => {
     if (typeof fen !== 'string' || !fen.trim()) {
       return res.status(400).json({ error: 'Invalid or missing fen' })
     }
+    console.log(fen)
     const result = searchBestMove(fen)
     return res.json({
       bestMoveSAN: result,
