@@ -1,1 +1,1 @@
-{"root":["./src/index.ts","./src/moveordering.ts","./src/search2.ts","./src/types.ts","./src/utils.ts"],"version":"5.8.3"}
+{"root":["./src/evaluate.ts","./src/index.ts","./src/minimax.ts","./src/searchbestmoveparallel.ts","./src/types.ts","./src/utils.ts","./src/worker.ts","./src/ml-part/preprocessing.ts","./src/ml-part/stockfish.ts"],"version":"5.8.3"}
