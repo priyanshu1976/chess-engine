@@ -92,6 +92,16 @@ See `backend/src` for implementation details: `evaluate.ts`, `minimax.ts`, and `
 
 ---
 
+## 🎬 Working
+
+See the chess engine in action:
+
+https://github.com/user-attachments/assets/edited.mov
+
+![Chess Engine Working](./move.png)
+
+---
+
 ## 📚 For Developers
 
 - Run unit tests (if present) and linting from each package.
