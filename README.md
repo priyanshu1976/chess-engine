@@ -1,101 +1,112 @@
-# ♟️ Chess Engine
+![Chess banner](./chess.png)
 
-A TypeScript-based **Chess Engine** built from scratch that models the thinking processes of professional engines (like Stockfish): **position evaluation**, **heuristic scoring**, and **parallel move search using multi-threading**.
+# ♟️ Chess Engine — Fast, Parallel, and Extensible
 
-This project is designed for anyone curious about how computers play chess — including developers, students, and AI enthusiasts.
-
----
-
-## 🔍 Overview
-
-This project explains the **internal workings** of a chess engine: from the **evaluation function** that assigns numerical scores to positions, to the **search algorithms** that simulate possible futures and pick the best move.
-
-You can use this engine in a frontend UI or run it as a backend service to find the best move from any FEN (Forsyth–Edwards Notation) position.
+A modern TypeScript chess engine that demonstrates high-quality evaluation, efficient search (alpha-beta pruning), and parallel move exploration using worker threads. Ideal for learning, experimentation, and integration into web UIs or bots.
 
 ---
 
-## 🧠 Core Concepts
+## 🔭 Highlights
 
-- **Heuristic Evaluation Function:** Uses piece values, piece-square tables, king safety, and other positional heuristics to evaluate board states.
-- **Move Generation:** Generates all legal moves using [chess.js](https://github.com/jhlywa/chess.js).
-- **Minimax with Alpha-Beta Pruning:** Efficiently searches through positions to find optimal moves.
-- **Multi-Threading (Worker Threads):** Evaluates moves in parallel for better performance.
-- **FEN Support:** Accepts any valid FEN string for analysis.
-
----
-
-## ⚙️ Features
-
-- ✅ Accurate position evaluation
-- ✅ Multi-threaded search for high performance
-- ✅ FEN string parsing
-- ✅ Move generation and scoring visualization
-- ✅ Easily extendable and open-source
+- **Blazing Search:** Minimax with alpha-beta pruning and parallel search.
+- **Tunable Evaluation:** Piece-square tables, material, king safety, and tuned heuristic weights (see `tuned_values.csv`).
+- **Frontend-ready:** Integrates with a React/Vite frontend included in this repo.
+- **Educational:** Clear code structure in `backend/src` for stepping through core algorithms.
 
 ---
 
-## 🧩 API Reference
+## 🧭 Quick Start
 
-### Evaluate a Position
-
-**Request**
-
-```http
-POST /api/evaluate
-Content-Type: application/json
-
-{
-  "fen": "<FEN_STRING>"
-}
-```
-
-**Response**
-
-```json
-{
-  "bestMove": "e2e4",
-  "evaluation": 0.65
-}
-```
-
----
-
-### Get Best Move (Multi-threaded)
-
-**Request**
-
-```http
-POST /api/search
-Content-Type: application/json
-
-{
-  "fen": "<FEN_STRING>",
-  "depth": 3  // Optional, default is 3
-}
-```
-
-**Parameters**
-
-| Parameter | Type   | Description                           |
-| --------- | ------ | ------------------------------------- |
-| fen       | string | **Required.** FEN string to analyze   |
-| depth     | number | _Optional._ Search depth (default: 3) |
-
----
-
-## 🚀 Demo
-
-- 🎥 [Video Explanation – How Chess Engine Works Internally](https://youtu.be/TZz2ynMxxEQ?si=iucOAwzsSGLR0o4e)
-
----
-
-## 🖥️ Installation
-
-To deploy or run locally:
+1. Clone the repo
 
 ```bash
 git clone https://github.com/priyanshupatel/chess-engine.git
 cd chess-engine
+```
+
+2. Install backend dependencies and run dev server
+
+```bash
+cd backend
 npm install
 npm run dev
 ```
+
+3. Start the frontend
+
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
+
+Open the app in your browser (Vite usually runs at http://localhost:5173).
+
+---
+
+## 📁 Project Structure (high level)
+
+- `backend/` — Engine logic, search, evaluation, and worker threads.
+- `frontend/` — React + Vite UI to play and visualize engine decisions.
+- `tuned_values.csv` — Tunable parameters used by the evaluation function.
+
+---
+
+## 🔧 Usage Examples
+
+From the backend you can call endpoints to evaluate or search a position:
+
+```
+POST /api/evaluate    → returns evaluation score and features
+POST /api/search      → returns best move with principal variation
+```
+
+See `backend/src` for implementation details: `evaluate.ts`, `minimax.ts`, and `searchBestMoveParallel.ts`.
+
+---
+
+## 🖼 Screenshots & Gallery
+
+<div style="display:flex;gap:18px;flex-wrap:wrap">
+    <figure style="width:100%;margin:0">
+    	<img src="./architecture.png" alt="architecture" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Architecture</figcaption>
+    </figure>
+    <figure style="width:100%;margin:0">
+    	<img src="./alpah beta minmax.png" alt="alpha beta minmax" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Alpha Beta Minmax</figcaption>
+    </figure>
+    <figure style="width:100%;margin:0">
+    	<img src="./modelPerfirmace.png" alt="model performance" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Model Performance</figcaption>
+    </figure>
+    <figure style="width:100%;margin:0">
+    	<img src="./featureset.png" alt="featureset" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Feature Set</figcaption>
+    </figure>
+    <figure style="width:100%;margin:0">
+    	<img src="./evaluationfuncion.png" alt="evaluation function" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Evaluation Function</figcaption>
+    </figure>
+</div>
+
+---
+
+## 📚 For Developers
+
+- Run unit tests (if present) and linting from each package.
+- Explore `backend/src/worker.ts` for parallel search orchestration.
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome — open issues or PRs. Follow the standard GitHub flow and include tests for new features.
+
+---
+
+## 📜 License
+
+MIT — see LICENSE file.
+
+---
