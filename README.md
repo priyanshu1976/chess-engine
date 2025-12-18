@@ -77,7 +77,7 @@ See `backend/src` for implementation details: `evaluate.ts`, `minimax.ts`, and `
     	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Alpha Beta Minmax</figcaption>
     </figure>
     <figure style="width:100%;margin:0">
-    	<img src="./modelPerfirmace.png" alt="model performance" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
+    	<img src="./modelPerformace.png" alt="model performance" style="width:100%;height:auto;border-radius:6px;box-shadow:0 6px 18px rgba(0,0,0,0.12)" />
     	<figcaption style="text-align:center;margin-top:8px;font-size:13px;color:#444">Model Performance</figcaption>
     </figure>
     <figure style="width:100%;margin:0">
